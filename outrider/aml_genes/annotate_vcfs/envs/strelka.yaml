@@ -1,0 +1,7 @@
+name: strelka
+channels:
+ - conda-forge
+ - bioconda
+dependencies:
+ - strelka
+ - manta
