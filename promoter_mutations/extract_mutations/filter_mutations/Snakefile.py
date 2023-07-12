@@ -2,33 +2,35 @@ import pandas as pd
 
 promoter_suffix = '2000_symm'
 
-counts_tsv = '/lustre/groups/epigenereg01/workspace/projects/vale/calling_new/MLL/reoccurence/mll5k_counts.tsv.gz'
+counts_tsv = '/s/project/mll/sergey/MLL_data/mll5k_counts.tsv.gz'
 
-gnomAD_vcf = '/lustre/groups/epigenereg01/workspace/projects/vale/tools/gnomAD/v3.1.1_GRCh38/af_only/GRCh37/gnomAD.GRCh38.concat.GRCh37.vcf.gz'
+gnomAD_vcf = '/s/project/mll/sergey/effect_prediction/tools/gnomAD/gnomAD.GRCh38.concat.GRCh37.vcf.gz'
 
 promoters_bed = f'/s/project/mll/sergey/effect_prediction/promoter_mutations/tables/promoters_{promoter_suffix}.bed'
 
 progress_dir = f'/s/project/mll/sergey/effect_prediction/promoter_mutations/{promoter_suffix}/' #output dir
 
-input_data_dir='/s/project/mll/rawdata/Somatic_Analysis/'
+input_data_dir='/s/project/mll/rawdata/'
 
 vcf_list='/s/project/mll/sergey/effect_prediction/promoter_mutations/analysed_samples/analysed_vcfs.tsv'
 
-all_patients=pd.read_csv(vcf_list, names=['sample_ID', 'VCF_file'])['VCF_file'].str.replace('.vcf.gz','').unique()
+all_patients=pd.read_csv(vcf_list, names=['sample_ID', 'VCF_file'], sep=' ')['VCF_file'].str.replace('.vcf.gz','').unique()
 
 rule all:
     input:
         expand(progress_dir + 'filtered/{patient}.vcf.gz', patient=all_patients),
 
 rule filter_calls:
+    #use only mutations in promoter regions
     input:
         vcf = input_data_dir + 'Somatic_Analysis/{patient}.vcf.gz',
+        bed = promoters_bed,
     output:
         vcf = progress_dir + 'passed/{patient}.vcf.gz',
         tbi = progress_dir + 'passed/{patient}.vcf.gz.tbi',
     shell:
         r'''
-        bcftools view {input.vcf} --max-alleles 2 -v "snps,indels" -i 'FILTER="PASS"' -Oz -o {output.vcf}
+        bcftools view {input.vcf} --max-alleles 2 -v "snps,indels" -i 'FILTER="PASS"' -R {input.bed} -Oz -o {output.vcf}
         tabix -f {output.vcf}
         '''
 
@@ -67,7 +69,6 @@ rule annotate_gnomAD:
         tbi = progress_dir + 'gnomAD/{patient}.vcf.gz.tbi',
     params:
         gnomAD_vcf = gnomAD_vcf,
-        workdir = progress_dir + 'gnomAD/'
     shell:
         r'''
         bcftools annotate --threads 4 \
@@ -79,11 +80,32 @@ rule annotate_gnomAD:
         tabix -f {output.vcf}
         '''
 
-
-rule apply_filteres:
+rule annotate_genes:
+    #add gene annotations using promoter bed file
+    #each promoter mutations is annotated with the corresponding gene(s)
     input:
         vcf = progress_dir + 'gnomAD/{patient}.vcf.gz',
         tbi = progress_dir + 'gnomAD/{patient}.vcf.gz.tbi',
+        header = 'headers/gene_header.txt',
+        bed = promoters_bed,
+    output:
+        vcf = progress_dir + 'genes/{patient}.vcf.gz',
+        tbi = progress_dir + 'genes/{patient}.vcf.gz.tbi',
+    shell:
+        r'''
+        bcftools annotate --threads 4 \
+        -h {input.header} \
+        -c 'CHROM,FROM,TO,=gene' \
+        -a {input.bed} \
+        {input.vcf} \
+        -Oz -o {output.vcf}
+        tabix -f {output.vcf}
+        '''
+
+rule apply_filteres:
+    input:
+        vcf = progress_dir + 'genes/{patient}.vcf.gz',
+        tbi = progress_dir + 'genes/{patient}.vcf.gz.tbi',
     output:
         vcf = progress_dir + 'filtered/{patient}.vcf.gz',
         tbi = progress_dir + 'filtered/{patient}.vcf.gz.tbi',
