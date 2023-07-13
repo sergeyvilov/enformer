@@ -12,7 +12,7 @@ liftover_dir = '/s/project/mll/sergey/effect_prediction/tools/liftOver/'
 analysed_genes_csv='/s/project/mll/sergey/effect_prediction/promoter_mutations/analysed_genes/analysed_genes.csv'
 
 genelist = pd.read_csv(analysed_genes_csv).squeeze()
-    
+
 rule all:
     input:
         progress_dir + 'promoters_196000_left.bed',
@@ -53,7 +53,7 @@ rule change_chrom_names:
         r'''
         cat {input.bed}|sed -e 's/^chr//' -e 's/^M/MT/'|grep -E '^[0-9XYMT]+\s' > {output.bed}
         '''
-        
+
 
 rule filter_genes:
     input:
@@ -78,7 +78,7 @@ rule get_promoters_symm:
         r'''
         for promoter_size in 2000 5000 10000 25000 50000 196000;do
             bedtools flank -i {input.bed} -g {input.chrom_sizes} -s -l ${{promoter_size}} -r ${{promoter_size}} |\
-            awk '{{printf "%s%s",$0,(NR%2?"\t":RS)}}'|awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$9,$4,$5,$6}}'  > {params.workdir}promoters_${{promoter_size}}_symm.bed
+            awk '{{printf "%s%s",$0,(NR%2?"\t":RS)}}'|awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$9,$4,$5,$6,($2+$9-1)/2}}'  > {params.workdir}promoters_${{promoter_size}}_symm.bed
         done
         '''
 
@@ -93,7 +93,8 @@ rule get_promoters_left:
     shell:
         r'''
         for promoter_size in 2000 5000 10000 25000 50000 196000;do
-            bedtools flank -i {input.bed} -g {input.chrom_sizes} -s -l ${{promoter_size}} -r 0 > {params.workdir}promoters_${{promoter_size}}_left.bed
+            bedtools flank -i {input.bed} -g {input.chrom_sizes} -s -l ${{promoter_size}} -r 0 \
+            | awk 'BEGIN{{OFS="\t"}}{{$7=($2+$3)/2}}{{print}}' > {params.workdir}promoters_${{promoter_size}}_left.bed
         done
         '''
 
@@ -112,4 +113,3 @@ rule get_window_pos:
         bedtools flank -i {input.bed} -g {input.chrom_sizes} -s -b {params.half_window} > {output.tmp}
         cat {output.tmp}|awk '{{printf "%s%s",$0,(NR%2?"\t":RS)}}'|awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$9,$4,$5,$6}}'  > {output.bed}
         '''
-

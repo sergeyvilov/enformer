@@ -2,13 +2,16 @@
 
 #combine mutations in a tsv table after filtering (filter_mutations)
 
-promoter_suffix='2000_symm'
+promoter_suffix='2000_symm' 
 
-vcfdir="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/filtered/"
+vcfdir="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/filter_gnomAD/"
 
-output_tsv="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/mutations.tsv"
+output_tsv="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/mutations_filter_gnomAD.tsv"
 
-for vcf in $(find "$vcfdir" -name '*.vcf.gz');do
-    vcf_name=$(basename $vcf)
-    bcftools view -H $vcf|cut -f1,2,3,4,5,8|sed 's/\t[^\t]*gene=/\t/'|sed 's/$/\t'"$vcf_name"'/'
-done > $output_tsv
+cat $vcfdir/* > $output_tsv
+
+vcfdir="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/filter_counts/"
+
+output_tsv="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/mutations_filter_counts.tsv"
+
+cat $vcfdir/* > $output_tsv

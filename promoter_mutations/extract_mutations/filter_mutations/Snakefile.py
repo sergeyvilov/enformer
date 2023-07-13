@@ -1,6 +1,6 @@
 import pandas as pd
 
-promoter_suffix = '2000_symm'
+promoter_suffix = '2000_left'
 
 counts_tsv = '/s/project/mll/sergey/MLL_data/mll5k_counts.tsv.gz'
 
@@ -18,7 +18,10 @@ all_patients=pd.read_csv(vcf_list, names=['sample_ID', 'VCF_file'], sep=' ')['VC
 
 rule all:
     input:
-        expand(progress_dir + 'filtered/{patient}.vcf.gz', patient=all_patients),
+        expand(progress_dir + 'gnomAD/{patient}.vcf.gz', patient=all_patients),
+        expand(progress_dir + 'filter_gnomAD/{patient}.tsv', patient=all_patients),
+        expand(progress_dir + 'filter_counts/{patient}.tsv', patient=all_patients),
+
 
 rule filter_calls:
     #use only mutations in promoter regions
@@ -102,15 +105,26 @@ rule annotate_genes:
         tabix -f {output.vcf}
         '''
 
-rule apply_filteres:
+rule filter_gnomAD:
     input:
         vcf = progress_dir + 'genes/{patient}.vcf.gz',
         tbi = progress_dir + 'genes/{patient}.vcf.gz.tbi',
     output:
-        vcf = progress_dir + 'filtered/{patient}.vcf.gz',
-        tbi = progress_dir + 'filtered/{patient}.vcf.gz.tbi',
+        tsv = progress_dir + 'filter_gnomAD/{patient}.tsv',
     shell:
         r'''
-        bcftools view -i '(gnomAD_AF<=5e-4||gnomAD_AF=".")&&(MLL_counts[0]<18||MLL_counts[1]<27||MLL_counts=".")' {input.vcf} -Oz -o {output.vcf}
-        tabix -f {output.vcf}
+        bcftools view -H -i '(gnomAD_AF<=5e-4||gnomAD_AF=".")' {input.vcf} \
+        |cut -f1,2,3,4,5,8|sed 's/\t[^\t]*gene=/\t/'|sed 's/$/\t'"{wildcards.patient}"'.vcf.gz/' > {output.tsv}
+        '''
+
+rule filter_counts:
+    input:
+        vcf = progress_dir + 'genes/{patient}.vcf.gz',
+        tbi = progress_dir + 'genes/{patient}.vcf.gz.tbi',
+    output:
+        tsv = progress_dir + 'filter_counts/{patient}.tsv',
+    shell:
+        r'''
+        bcftools view -H -i '(gnomAD_AF<=5e-4||gnomAD_AF=".")&&(MLL_counts[0]<18||MLL_counts[1]<27||MLL_counts=".")' {input.vcf} \
+        |cut -f1,2,3,4,5,8|sed 's/\t[^\t]*gene=/\t/'|sed 's/$/\t'"{wildcards.patient}"'.vcf.gz/' > {output.tsv}
         '''
