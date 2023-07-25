@@ -2,7 +2,7 @@
 
 #combine mutations in a tsv table after filtering (filter_mutations)
 
-promoter_suffix='2000_symm' 
+promoter_suffix='2000_left' 
 
 vcfdir="/s/project/mll/sergey/effect_prediction/promoter_mutations/${promoter_suffix}/filter_gnomAD/"
 
