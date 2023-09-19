@@ -4,7 +4,7 @@
 #if the line is absent, the node should also be excluded as AVX works somehow more slowly on these machines
 
 source /data/ouga/home/ag_gagneur/l_vilov/.bashrc
-conda activate bio
+conda activate svilov-bio
 rm -f slurm_logs/*
 mkdir slurm_logs
 snakemake -s Snakefile.py -k --use-conda --latency-wait 180 --cluster-config cluster.yaml --cluster 'sbatch \

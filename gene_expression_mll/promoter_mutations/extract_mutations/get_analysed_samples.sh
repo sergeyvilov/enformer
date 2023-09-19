@@ -25,7 +25,7 @@ cat outrider_samples.csv activation_samples.csv|sort|uniq > analysed_samples.csv
 
 rm outrider_samples.csv activation_samples.csv
 
-cat $vcf_matching_jessy |tail -n+2|cut -f1,25|sed 's/"//g'|sort -k1,1 > vcf_matching.tsv
+cat $vcf_matching_jessy|grep 'leukemia_14group'|cut -f1,25|sed 's/"//g'|sort -k1,1 > vcf_matching.tsv
 
 join analysed_samples.csv vcf_matching.tsv > analysed_vcfs.tsv
 
